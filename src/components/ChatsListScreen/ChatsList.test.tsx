@@ -1,5 +1,6 @@
 import React from 'react';
 import { ApolloProvider } from '@apollo/react-hooks';
+
 import {
   cleanup,
   render,
@@ -9,20 +10,21 @@ import {
 } from '@testing-library/react';
 import { createBrowserHistory } from 'history';
 import { mockApolloClient } from '../../test-helpers';
-
-import * as queries from '../../graphql/queries';
 import ChatsList from './ChatsList';
+import * as queries from '../../graphql/queries';
 
 describe('ChatsList', () => {
-  const { location } = window;
   afterEach(() => {
     cleanup();
 
-    // https://remarkablemark.org/blog/2018/11/17/mock-window-location/
     delete window.location;
-    // eslint-disable-next-line no-native-reassign
     window = Object.create(window);
-    window.location = location;
+    Object.defineProperty(window, 'location', {
+      value: {
+        href: '/',
+      },
+      writable: true,
+    });
   });
 
   it('renders fetched chats data', async () => {
@@ -42,6 +44,11 @@ describe('ChatsList', () => {
                   id: 1,
                   content: 'Hello',
                   createdAt: new Date('1 Jan 2019 GMT'),
+                  isMine: true,
+                  chat: {
+                    __typename: 'Chat',
+                    id: 1,
+                  },
                 },
               },
             ],
@@ -51,8 +58,9 @@ describe('ChatsList', () => {
     ]);
 
     const history = createBrowserHistory();
+
     {
-      const { getByTestId } = render(
+      const { container, getByTestId } = render(
         <ApolloProvider client={client}>
           <ChatsList history={history} />
         </ApolloProvider>
@@ -66,7 +74,7 @@ describe('ChatsList', () => {
         'https://localhost:4000/picture.jpg'
       );
       expect(getByTestId('content')).toHaveTextContent('Hello');
-      expect(getByTestId('date')).toHaveTextContent('11:00');
+      expect(getByTestId('date')).toHaveTextContent('00:00');
     }
   });
 
@@ -87,6 +95,11 @@ describe('ChatsList', () => {
                   id: 1,
                   content: 'Hello',
                   createdAt: new Date('1 Jan 2019 GMT'),
+                  isMine: true,
+                  chat: {
+                    __typename: 'Chat',
+                    id: 1,
+                  },
                 },
               },
             ],
@@ -96,8 +109,9 @@ describe('ChatsList', () => {
     ]);
 
     const history = createBrowserHistory();
+
     {
-      const { getByTestId } = render(
+      const { container, getByTestId } = render(
         <ApolloProvider client={client}>
           <ChatsList history={history} />
         </ApolloProvider>
@@ -107,9 +121,9 @@ describe('ChatsList', () => {
 
       fireEvent.click(getByTestId('chat'));
 
-      await waitFor(() => {
-        expect(history.location.pathname).toEqual('/chats/1');
-      });
+      await waitFor(() =>
+        expect(history.location.pathname).toEqual('/chats/1')
+      );
     }
   });
 });
