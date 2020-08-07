@@ -1,5 +1,5 @@
-import { Switch } from 'react-router-dom';
 import { AnimatedSwitch, spring } from 'react-router-transition';
+import { Switch } from 'react-router-dom';
 import styled from 'styled-components';
 
 // A workaround to make test pass
