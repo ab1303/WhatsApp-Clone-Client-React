@@ -1,46 +1,24 @@
 import React from 'react';
 import { ApolloProvider } from '@apollo/react-hooks';
-import { render, waitFor } from '@testing-library/react';
-
-import { mockApolloClient } from './test-helpers';
-import { getChatsQuery } from './components/ChatsListScreen/ChatsList';
+import ReactDOM from 'react-dom';
 import App from './App';
+import { mockApolloClient } from './test-helpers';
+import * as subscriptions from './graphql/subscriptions';
 
-describe('App Tests', () => {
-  it.skip('renders learn react link', async () => {
-    const client = mockApolloClient([
-      {
-        request: { query: getChatsQuery },
-        result: {
-          data: {
-            chats: [
-              {
-                __typename: 'Chat',
-                id: 1,
-                name: 'Foo Bar',
-                picture: 'https://localhost:4000/picture.jpg',
-                lastMessage: {
-                  __typename: 'Message',
-                  id: 1,
-                  content: 'Hello',
-                  createdAt: new Date('1 Jan 2019 GMT'),
-                },
-              },
-            ],
-          },
-        },
-      },
-    ]);
+it('renders without crashing', () => {
+  const client = mockApolloClient([
+    {
+      request: { query: subscriptions.messageAdded },
+      result: { data: {} }
+    }
+  ]);
+  const div = document.createElement('div');
 
-    const { container, getByText } = render(
-      <ApolloProvider client={client}>
-        <App />
-      </ApolloProvider>
-    );
-
-    await waitFor(() => container);
-
-    const linkElement = getByText(/Whatsapp Clone/i);
-    expect(linkElement).toBeInTheDocument();
-  });
+  ReactDOM.render(
+    <ApolloProvider client={client}>
+      <App />
+    </ApolloProvider>,
+    div
+  );
+  ReactDOM.unmountComponentAtNode(div);
 });
