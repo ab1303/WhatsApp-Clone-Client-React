@@ -14,17 +14,13 @@ import ChatsList from './ChatsList';
 import * as queries from '../../graphql/queries';
 
 describe('ChatsList', () => {
+  const { location } = window;
   afterEach(() => {
     cleanup();
 
     delete window.location;
     window = Object.create(window);
-    Object.defineProperty(window, 'location', {
-      value: {
-        href: '/',
-      },
-      writable: true,
-    });
+    window.location = location;
   });
 
   it('renders fetched chats data', async () => {
@@ -60,7 +56,7 @@ describe('ChatsList', () => {
     const history = createBrowserHistory();
 
     {
-      const { container, getByTestId } = render(
+      const { getByTestId } = render(
         <ApolloProvider client={client}>
           <ChatsList history={history} />
         </ApolloProvider>
@@ -74,7 +70,7 @@ describe('ChatsList', () => {
         'https://localhost:4000/picture.jpg'
       );
       expect(getByTestId('content')).toHaveTextContent('Hello');
-      expect(getByTestId('date')).toHaveTextContent('00:00');
+      expect(getByTestId('date')).toHaveTextContent('11:00');
     }
   });
 
@@ -111,7 +107,7 @@ describe('ChatsList', () => {
     const history = createBrowserHistory();
 
     {
-      const { container, getByTestId } = render(
+      const { getByTestId } = render(
         <ApolloProvider client={client}>
           <ChatsList history={history} />
         </ApolloProvider>
