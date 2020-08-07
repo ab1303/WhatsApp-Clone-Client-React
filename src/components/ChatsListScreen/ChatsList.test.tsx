@@ -12,18 +12,15 @@ import { mockApolloClient } from '../../test-helpers';
 import ChatsList, { getChatsQuery } from './ChatsList';
 
 describe('ChatsList', () => {
+  const { location } = window;
   afterEach(() => {
     cleanup();
 
+    // https://remarkablemark.org/blog/2018/11/17/mock-window-location/
     delete window.location;
     // eslint-disable-next-line no-native-reassign
     window = Object.create(window);
-    Object.defineProperty(window, 'location', {
-      value: {
-        href: '/',
-      },
-      writable: true,
-    });
+    window.location = location;
   });
 
   it('renders fetched chats data', async () => {
@@ -52,8 +49,6 @@ describe('ChatsList', () => {
     ]);
 
     const history = createBrowserHistory();
-    console.log('history object 1', history.location);
-
     {
       const { getByTestId } = render(
         <ApolloProvider client={client}>
@@ -99,8 +94,6 @@ describe('ChatsList', () => {
     ]);
 
     const history = createBrowserHistory();
-    console.log('history object 2', history.location);
-
     {
       const { getByTestId } = render(
         <ApolloProvider client={client}>
