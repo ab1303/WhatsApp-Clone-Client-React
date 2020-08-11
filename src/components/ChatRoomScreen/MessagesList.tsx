@@ -1,14 +1,27 @@
-import moment from 'moment';
+import format from 'date-fns/format';
 import React from 'react';
 import { useEffect, useRef } from 'react';
-import ReactDOM from 'react-dom';
 import styled, { css } from 'styled-components';
+import { useInfiniteScroll } from '../../hooks/use-infinite-scroll';
+import { useAdjustedScroll } from '../../hooks/use-adjusted-scroll';
 
 const Container = styled.div`
+  position: relative;
   display: block;
   flex: 2;
   overflow-y: overlay;
   padding: 0 15px;
+`;
+
+const LoadingMore = styled.div`
+  height: 30px;
+  line-height: 30px;
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  text-align: center;
 `;
 
 type StyledProp = {
@@ -89,19 +102,38 @@ interface Message {
 }
 interface MessagesListProps {
   messages: Array<Message>;
+  loadMore: Function;
+  hasMore: boolean;
 }
 
-const MessagesList: React.FC<MessagesListProps> = ({ messages }) => {
-  const selfRef = useRef(null);
+const MessagesList: React.FC<MessagesListProps> = ({
+  messages,
+  loadMore,
+  hasMore,
+}) => {
+  const selfRef = useRef<HTMLDivElement>(null);
+  const [fetching, stopFetching] = useInfiniteScroll({
+    onLoadMore: loadMore,
+    hasMore,
+    ref: selfRef!,
+  });
+  const adjustScroll = useAdjustedScroll(selfRef);
 
   useEffect(() => {
     if (!selfRef.current) return;
-    const selfDOMNode = ReactDOM.findDOMNode(selfRef.current) as HTMLElement;
-    selfDOMNode.scrollTop = Number.MAX_SAFE_INTEGER;
-  }, [messages.length]);
+
+    if (fetching) {
+      stopFetching();
+      adjustScroll();
+    } else {
+      // scroll to the most recent message
+      adjustScroll(true);
+    }
+  }, [messages.length, selfRef, fetching, stopFetching, adjustScroll]);
 
   return (
     <Container ref={selfRef}>
+      {fetching && <LoadingMore>{'Loading more messages...'}</LoadingMore>}
       {messages.map((message: any) => (
         <MessageItem
           data-testid="message-item"
@@ -109,7 +141,7 @@ const MessagesList: React.FC<MessagesListProps> = ({ messages }) => {
           key={message.id}>
           <Contents data-testid="message-content">{message.content}</Contents>
           <Timestamp data-testid="message-date">
-            {moment(message.createdAt).format('HH:mm')}
+            {format(message.createdAt, 'HH:mm')}
           </Timestamp>
         </MessageItem>
       ))}

@@ -35,7 +35,6 @@
     "graphql-tag": "2.11.0",
     "history": "5.0.0",
     "jest-fetch-mock": "3.0.3",
-    "moment": "2.27.0",
     "prettier": "2.0.5",
     "react": "16.13.1",
     "react-dom": "16.13.1",
@@ -51,8 +50,9 @@
     "build": "react-scripts build",
     "test": "react-scripts test --env=jest-environment-jsdom-sixteen",
     "eject": "react-scripts eject",
+    "codegen": "graphql-codegen",
     "format": "prettier \"**/*.{ts,tsx,css,graphql}\" --write",
-    "codegen": "graphql-codegen"
+    "size": "source-map-explorer 'build/static/js/*.js'"
   },
   "eslintConfig": {
     "extends": "react-app"

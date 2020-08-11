@@ -1,13 +1,20 @@
 import gql from 'graphql-tag';
 import React from 'react';
-import { useCallback } from 'react';
+import { useCallback, useState, useContext, useEffect } from 'react';
 import { Redirect } from 'react-router-dom';
+import { useApolloClient } from '@apollo/react-hooks';
 import styled from 'styled-components';
 import ChatNavbar from './ChatNavbar';
 import MessageInput from './MessageInput';
 import MessagesList from './MessagesList';
 import { History } from 'history';
-import { useGetChatQuery, useAddMessageMutation } from '../../graphql/types';
+import {
+  useGetChatQuery,
+  useAddMessageMutation,
+  GetChatQuery,
+  GetChatQueryVariables,
+  GetChatDocument,
+} from '../../graphql/types';
 import * as fragments from '../../graphql/fragments';
 import { writeMessage } from '../../services/cache.service';
 
@@ -20,7 +27,7 @@ const Container = styled.div`
 
 // eslint-disable-next-line
 const getChatQuery = gql`
-  query GetChat($chatId: ID!) {
+  query GetChat($chatId: ID!, $limit: Int!, $after: Float) {
     chat(chatId: $chatId) {
       ...FullChat
     }
@@ -38,17 +45,73 @@ const addMessageMutation = gql`
   ${fragments.message}
 `;
 
+const PaginationContext = React.createContext({
+  after: 0,
+  limit: 20,
+  /**
+   * Sets new cursor
+   */
+  setAfter: (after: number) => {},
+  /**
+   * Resets `after` value to its inital state (null) so
+   */
+  reset: () => {},
+});
+
+const usePagination = () => {
+  const pagination = useContext(PaginationContext);
+
+  // Resets the pagination every time a component did unmount
+  useEffect(() => {
+    return () => {
+      pagination.reset();
+    };
+  }, [pagination]);
+
+  return pagination;
+};
+
+export const ChatPaginationProvider = ({ children }: { children: any }) => {
+  const [after, setAfter] = useState<number | null>(null);
+
+  return (
+    <PaginationContext.Provider
+      value={{
+        limit: 20,
+        after: after!,
+        setAfter,
+        reset: () => setAfter(null),
+      }}>
+      {children}
+    </PaginationContext.Provider>
+  );
+};
+
+export const useGetChatPrefetch = () => {
+  const client = useApolloClient();
+  const { limit, after } = usePagination();
+
+  return (chatId: string) => {
+    client.query<GetChatQuery, GetChatQueryVariables>({
+      query: GetChatDocument,
+      variables: {
+        chatId,
+        after,
+        limit,
+      },
+    });
+  };
+};
+
 interface ChatRoomScreenParams {
   chatId: string;
   history: History;
 }
 
-const ChatRoomScreen: React.FC<ChatRoomScreenParams> = ({
-  history,
-  chatId,
-}) => {
-  const { data, loading } = useGetChatQuery({
-    variables: { chatId },
+const ChatRoom: React.FC<ChatRoomScreenParams> = ({ history, chatId }) => {
+  const { after, limit, setAfter } = usePagination();
+  const { data, loading, fetchMore } = useGetChatQuery({
+    variables: { chatId, after, limit },
   });
 
   const [addMessage] = useAddMessageMutation();
@@ -87,6 +150,37 @@ const ChatRoomScreen: React.FC<ChatRoomScreenParams> = ({
     [data, chatId, addMessage]
   );
 
+  useEffect(() => {
+    if (!after) {
+      return;
+    }
+
+    // every time after changes its value, fetch more messages
+    fetchMore({
+      variables: {
+        after,
+        limit,
+      },
+      updateQuery(prev, { fetchMoreResult }) {
+        const messages = [
+          ...fetchMoreResult!.chat!.messages.messages,
+          ...prev.chat!.messages.messages,
+        ];
+
+        return {
+          ...prev,
+          chat: {
+            ...prev.chat!,
+            messages: {
+              ...fetchMoreResult!.chat!.messages,
+              messages,
+            },
+          },
+        };
+      },
+    });
+  }, [after, limit, fetchMore]);
+
   if (data === undefined) {
     return null;
   }
@@ -104,9 +198,26 @@ const ChatRoomScreen: React.FC<ChatRoomScreenParams> = ({
   return (
     <Container>
       {chat?.id && <ChatNavbar chat={chat} history={history} />}
-      {chat?.messages && <MessagesList messages={chat.messages} />}
+      {chat?.messages && (
+        <MessagesList
+          messages={chat.messages.messages}
+          hasMore={chat.messages.hasMore}
+          loadMore={() => setAfter(chat.messages.cursor!)}
+        />
+      )}
       <MessageInput onSendMessage={onSendMessage} />
     </Container>
+  );
+};
+
+const ChatRoomScreen: React.FC<ChatRoomScreenParams> = ({
+  history,
+  chatId,
+}) => {
+  return (
+    <ChatPaginationProvider>
+      <ChatRoom history={history} chatId={chatId} />
+    </ChatPaginationProvider>
   );
 };
 
